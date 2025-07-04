@@ -34,10 +34,11 @@ exports.registerUser = async (req, res) => {
         }
         catch (error) {
                 console.error("Register error : ", error)
-                return res.status(500), json("Register req failed")
+                return res.status(500).json("Register req failed")
         }
 
 }
+
 
 // user login
 exports.loginUser = async (req, res) => {
@@ -94,49 +95,64 @@ exports.loginUser = async (req, res) => {
                 }
         }
 };
+exports.registerAsso = async (req, res) => {
+    console.log("Inside the Asso controller");
 
+    const { name, state, email, password } = req.body;
 
-exports.loginAdmin = async (req, res) => {
-        console.log("Inside admin login controller function");
-
-        try {
-                const { email, password } = req.body;
-
-                if (!email || !password) {
-                        return res.status(400).json({ error: "Email and password required" });
-                }
-
-                const admin = await users.findOne({ email, role: 'admin' });
-
-                if (!admin) {
-                        return res.status(406).json({ error: "Invalid admin credentials" });
-                }
-
-                const isPasswordCorrect = await bcrypt.compare(password, admin.password);
-                if (!isPasswordCorrect) {
-                        return res.status(406).json({ error: "Invalid sasi credentials" });
-                }
-
-                const token = jwt.sign(
-                        { userId: admin._id, role: admin.role },
-                        process.env.JWTSECRET || "supersecretkey",
-                        { expiresIn: "1d" }
-                );
-
-                return res.status(200).json({
-                        token,
-                        message: "Admin login successful",
-                        admin: {
-                                id: admin._id,
-                                email: admin.email,
-                                role: admin.role,
-                        }
-                });
-
-        } catch (error) {
-                console.error("Admin login error:", error);
-                if (!res.headersSent) {
-                        return res.status(500).json({ error: "Internal server error" });
-                }
+    try {
+        const existingUser = await users.findOne({ email: email });
+        if (existingUser) {
+            return res.status(409).json({ message: "Account already exists" });
         }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newAsso = new users({
+            name,
+            state,
+            password: hashedPassword,
+            role: "association", // ✅ hardcode role here
+        });
+            email,
+
+        await newAsso.save();
+
+        return res.status(201).json({ message: "Association registered successfully" });
+
+    } catch (error) {
+        console.error("Register error : ", error);
+        return res.status(500).json({ message: "Registration failed" });
+    }
+};
+
+exports.registerAdmin = async (req, res) => {
+    console.log("Inside the Asso controller");
+
+    const { name, email, password } = req.body;
+
+    try {
+        const existingUser = await users.findOne({ email: email });
+        if (existingUser) {
+            return res.status(409).json({ message: "Admin Account already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newAdmin = new users({
+            name,
+            email,
+            password: hashedPassword,
+            role: "admin", // ✅ hardcode role here
+        });
+            
+
+        await newAdmin.save();
+
+        return res.status(201).json({ message: "Admin registered successfully" });
+
+    } catch (error) {
+        console.error("Register error : ", error);
+        return res.status(500).json({ message: "Registration failed" });
+    }
 };

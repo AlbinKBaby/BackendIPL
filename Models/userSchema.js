@@ -24,13 +24,18 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum : ['admin' , 'Team' ,'Association'],
+        enum : ['admin' , 'team' ,'association'],
         require: true,
     },
     logo:{
         type : String,
         require :false,
-    }
+    },
+     state : {
+        type : String,
+        require : true,
+    },
+
 
 })
 
