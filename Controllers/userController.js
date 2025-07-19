@@ -1,158 +1,150 @@
-const users = require('../Models/userSchema')
-const jwt = require('jsonwebtoken')
+const users = require('../Models/userSchema');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcrypt');
 
-
-// user registration
-exports.registerUser = async (req, res) => {
-        // here we write logic to resolve
-        console.log("inside the user controller")
-        // sending back to fe
-        res.status(201).json("Register req recieved")
-
-        const { name, captianName, email, password, coachName, role } = req.body;
-        try {
-                const existingUser = await users.findOne({ email: email });
-                if (existingUser) {
-                        return res.status(409).json("Account is already exist")
-                }
-                const hashedPassword = await bcrypt.hash(password, 10);
-
-                const newUser = new users({
-                        name,
-                        captianName,
-                        email,
-                        password:hashedPassword,
-                        coachName,
-                        role,
-                        logo: ""
-                });
-                await newUser.save()
-                return res(201).json("Register requested Successfully")
-
-        }
-        catch (error) {
-                console.error("Register error : ", error)
-                return res.status(500).json("Register req failed")
-        }
-
-}
-
-
-// user login
-exports.loginUser = async (req, res) => {
-        console.log("Inside login controller function");
-
+// Common register logic
+const registerCommon = async (req, res, userData) => {
         try {
                 const { email, password } = req.body;
 
-                console.log("Email received:", email);
-                console.log("Password received:", password);
-
-                if (!email || !password) {
-                        return res.status(400).json({ error: "Email and password required" });
+                const existingUser = await users.findOne({ email });
+                if (existingUser) {
+                        return res.status(409).json({ message: "Account already exists" });
                 }
 
-                const existingUser = await users.findOne({ email: email });
-                if (!existingUser) {
-                        return res.status(406).json({ error: "Invalid credentials" });
-                }
+                const hashedPassword = await bcrypt.hash(password, 10);
 
-                const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
-                console.log(isPasswordCorrect);
+                const newUser = new users({
+                        ...userData,
+                        email,
+                        password: hashedPassword,
+                });
 
-                if (!isPasswordCorrect) {
-                        return res.status(406).json({ error: "Invalid credentials poppo" });
-
-
-
-                }
+                await newUser.save();
 
                 const token = jwt.sign(
-                        { userId: existingUser._id, role: existingUser.role },
-                        process.env.JWTSECRET || "supersecretkey",
+                        { userId: newUser._id, role: newUser.role },
+                        process.env.JWTSECRET || "defaultsecret",
                         { expiresIn: "1d" }
                 );
 
-                const safeUser = {
-                        _id: existingUser._id,
-                        name: existingUser.name,
-                        email: existingUser.email,
-                        role: existingUser.role,
-                };
-
-                return res.status(200).json({
-                        user_data: safeUser,
-                        jwt_Token: token,
-                        message: "Login successful",
+                return res.status(201).json({
+                        message: `${userData.role} registered successfully`,
+                        token,
+                        user: {
+                                _id: newUser._id,
+                                name: newUser.name,
+                                email: newUser.email,
+                                role: newUser.role,
+                        }
                 });
 
         } catch (error) {
-                console.error("Login error:", error);
-                if (!res.headersSent) {
-                        return res.status(500).json({ error: "Login request failed" });
+                console.error("Register error:", error);
+                return res.status(500).json({ message: "Registration failed" });
+        }
+};
+
+// ✅ Team Register
+exports.registerUser = async (req, res) => {
+        try {
+                console.log("REGISTER BODY:", req.body);
+                console.log("REGISTER FILE:", req.file);
+
+                const { name, captianName, email, password, coachName } = req.body;
+
+                if (!name || !captianName || !email || !password || !coachName) {
+                        return res.status(400).json({ message: "Missing required fields" });
                 }
+
+                const logoPath = req.file ? req.file.filename : '';
+
+                return registerCommon(req, res, {
+                        name,
+                        captianName,
+                        coachName,
+
+                        role: 'team',
+                        logo: logoPath,
+                });
+        } catch (err) {
+                console.error(err);
+                return res.status(500).json({ message: "Internal server error" });
         }
 };
+
+// ✅ Association Register
 exports.registerAsso = async (req, res) => {
-    console.log("Inside the Asso controller");
+        try {
+                const { name, email, password, state } = req.body;
 
-    const { name, state, email, password } = req.body;
+                if (!name || !email || !password || !state) {
+                        return res.status(400).json({ message: "Missing required fields" });
+                }
 
-    try {
-        const existingUser = await users.findOne({ email: email });
-        if (existingUser) {
-            return res.status(409).json({ message: "Account already exists" });
+                return registerCommon(req, res, {
+                        name,
+                        state,
+                        role: 'association',
+                });
+        } catch (error) {
+                console.error(error);
+                return res.status(500).json({ message: "Internal server error" });
         }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newAsso = new users({
-            name,
-            state,
-            password: hashedPassword,
-            role: "association", // ✅ hardcode role here
-        });
-            email,
-
-        await newAsso.save();
-
-        return res.status(201).json({ message: "Association registered successfully" });
-
-    } catch (error) {
-        console.error("Register error : ", error);
-        return res.status(500).json({ message: "Registration failed" });
-    }
 };
 
+//  Admin Register
 exports.registerAdmin = async (req, res) => {
-    console.log("Inside the Asso controller");
+        try {
+                const { name, email, password } = req.body;
 
-    const { name, email, password } = req.body;
+                if (!name || !email || !password) {
+                        return res.status(400).json({ message: "Missing required fields" });
+                }
 
-    try {
-        const existingUser = await users.findOne({ email: email });
-        if (existingUser) {
-            return res.status(409).json({ message: "Admin Account already exists" });
+                return registerCommon(req, res, {
+                        name,
+                        role: 'admin',
+                });
+        } catch (error) {
+                console.error(error);
+                return res.status(500).json({ message: "Internal server error" });
         }
+};
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body;
 
-        const newAdmin = new users({
-            name,
-            email,
-            password: hashedPassword,
-            role: "admin", // ✅ hardcode role here
-        });
-            
-
-        await newAdmin.save();
-
-        return res.status(201).json({ message: "Admin registered successfully" });
-
-    } catch (error) {
-        console.error("Register error : ", error);
-        return res.status(500).json({ message: "Registration failed" });
+  try {
+    // Check if user exists
+    const user = await users.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "Email not registered" });
     }
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    const { password: pwd, ...userData } = user._doc; // remove password before sending
+
+    res.status(200).json({
+      message: "Login successful",
+      user_data: userData,
+      jwt_Token: token,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Server error during login" });
+  }
 };
