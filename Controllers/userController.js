@@ -64,7 +64,6 @@ exports.registerUser = async (req, res) => {
                         name,
                         captianName,
                         coachName,
-
                         role: 'team',
                         logo: logoPath,
                 });

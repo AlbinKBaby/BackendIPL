@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const playerSchema = new mongoose.Schema({
-    name: {
+    pname: {
         type: String,
         required: true,
     },
@@ -13,9 +13,9 @@ const playerSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    email : {
-        type : String,
-        required : true,
+    email: {
+        type: String,
+        required: true,
     },
     specialization: {
         type: String,
@@ -26,7 +26,7 @@ const playerSchema = new mongoose.Schema({
         required: true,
     },
     wk: {
-        type: Boolean,
+        type: String,
         required: true,
     },
     home: {
@@ -49,13 +49,13 @@ const playerSchema = new mongoose.Schema({
         type: Number,
         required: false,
     },
-    photo : {
-         type : String,
-    required : true,
+    photo: {
+        type: String,
+        required: false,
     },
 
 
 });
 
-const  players = mongoose.model('players',playerSchema)
+const players = mongoose.model('players', playerSchema)
 module.exports = players;

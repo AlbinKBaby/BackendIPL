@@ -17,6 +17,7 @@ const iplserver = express();
 // 9A import Router
 const router = require('./Routes/router')
 const playerRouter = require('./Routes/playerRouter.js')
+const teamRouter = require('./Routes/teamRouter.js')
 
 
 
@@ -31,9 +32,10 @@ iplserver.use(express.json())
 
 iplserver.use('/', router)
 iplserver.use('/player', playerRouter)
+iplserver.use('/team', teamRouter)
 
 // 7 define PORT 
-const PORT = 5000;
+const PORT = 5000;   
 
 // 8 run the serer
 iplserver.listen(PORT, () => {
